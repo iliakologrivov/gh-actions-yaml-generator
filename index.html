@@ -1,0 +1,521 @@
+<html>
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+        <!-- Custom styles for this template -->
+        <style>
+            .container {
+                max-width: 960px;
+            }
+
+            #yaml {
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                font-size: 16px;
+            }
+        </style>
+        <title>Hello, world!</title>
+    </head>
+    <body class="bg-light">
+        <div class="container" id="app">
+            <main>
+                <div class="py-5 text-center">
+                    <h2>Ghygen - Github Actions Yaml Generator (for Laravel)</h2>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-12 col-lg-12">
+                        <form class="needs-validation" novalidate>
+                            <div class="row">
+                                <div class="col-sm-12">
+                                    <label for="name" class="form-label">Name</label>
+                                    <input type="text" id="name" class="form-control" v-model="name" placeholder="Test Laravel Github action" v-on:input="yamlGenerate">
+                                    <small class="text-muted">
+                                        The name of your workflow. GitHub displays the names of your workflows on your repository's actions page.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            <div class="row">
+                                <h4 class="mb-3">On - GitHub event that triggers the workflow.</h4>
+                                <div class="row">
+                                    <div class="col-4">
+                                        <div class="form-check">
+                                            <input id="manualTrigger" v-model="manualTrigger" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="manualTrigger">Manual Trigger</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="form-check">
+                                            <input id="onPush" v-model="onPush" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="onPush">On Push</label>
+                                        </div>
+                                        <div v-if="onPush">
+                                            <label for="onPushBranches" class="form-label"><b>Branches</b></label>
+                                            <input type="text" class="form-control" v-model="onPushBranches" v-on:input="yamlGenerate" id="onPushBranches" value="">
+                                            <small class="text-muted">Branches for the push, comma separated for example main,develop.</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="form-check">
+                                            <input id="onPullRequest" v-model="onPullRequest" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="onPullRequest">On Pull Request</label>
+                                        </div>
+                                        <div v-if="onPullRequest">
+                                            <label for="onPushBranches" class="form-label"><b>Branches</b></label>
+                                            <input type="text" class="form-control" v-model="onPullRequestBranches" v-on:input="yamlGenerate" id="onPullRequestBranches" value="">
+                                            <small class="text-muted">Branches for the PR, comma separated for example main,develop.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            <div class="row">
+                                <h4 class="mb-3">Mysql Container Service</h4>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input id="mysqlService" v-model="mysqlService" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="mysqlService">Mysql Service</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row" v-if="mysqlService">
+                                    <div class="col-4">
+                                        <label for="mysqlVersion" class="form-label"><b>Mysql Version</b></label>
+                                        <input type="text" class="form-control" v-model="mysqlVersion" v-on:input="yamlGenerate" id="mysqlVersion">
+                                        <small class="text-muted">Define the Mysql Version</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <label for="mysqlDatabaseName" class="form-label"><b>Mysql Database Name</b></label>
+                                        <input type="text" class="form-control" v-model="mysqlDatabaseName" v-on:input="yamlGenerate" id="mysqlDatabaseName">
+                                        <small class="text-muted">Define the Mysql database name</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <label for="mysqlDatabasePort" class="form-label"><b>Mysql Database Port</b></label>
+                                        <input type="text" class="form-control" v-model="mysqlDatabasePort" v-on:input="yamlGenerate" id="mysqlDatabasePort">
+                                        <small class="text-muted">The Port exposed by the container, this is the external port.</small>
+                                    </div>
+                                </div>
+                                <div class="row" v-if="mysqlService">
+                                    <div class="col-8">
+                                        <label for="mysqlPasswordType" class="form-label"><b>Mysql Password: skip, or read from secret or hardcoded</b></label>
+                                        <select class="form-select" v-model="mysqlPasswordType" id="mysqlPasswordType" @change="showInputPassword = $event.target.value!=='skip'">
+                                            <option value="skip">Skip</option>
+                                            <option value="secret">From Secret</option>
+                                            <option value="hardcoded">Hardcoded</option>
+                                        </select>
+                                        <small class="text-muted">Mysql Password: skip, or read from secret or hardcoded</small>
+                                    </div>
+                                    <div class="col-4" v-if="showInputPassword">
+                                        <label for="mysqlPassword" class="form-label"><b>MySql Password</b></label>
+                                        <input type="text" class="form-control" v-model="mysqlPassword" v-on:input="yamlGenerate" id="mysqlPassword">
+                                        <small class="text-muted">For secret, fill with the name of your parameter for example DB_PASSOWORD, for Hardcoded, fill with your password (valid only for CICD, not production or stage)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            <div class="row">
+                                <h4 class="mb-3">Caching</h4>
+                                <div class="row">
+                                    <div class="col-4">
+                                        <div class="form-check">
+                                            <input id="stepCachePackages" v-model="stepCachePackages" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepCachePackages">Cache PHP Packages</label>
+                                            <div>
+                                                <small class="text-muted">Enable this, to improve speed of installing packages</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="form-check">
+                                            <input id="stepCacheVendors" v-model="stepCacheVendors" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepCacheVendors">Cache Vendor directory</label>
+                                            <div>
+                                                <small class="text-muted">Enable this, to skip installing packages using previous vendor cache</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="form-check">
+                                            <input id="stepCacheNpmModules" v-model="stepCacheNpmModules" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepCacheNpmModules">Cache Npm Modules</label>
+                                            <div>
+                                                <small class="text-muted">Enable this, to use cached Npm modules</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            <div class="row">
+                                <h4 class="mb-3">Environments (PHP / Node)</h4>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="form-check">
+                                            <label class="form-check-label" for="stepPhpVersions">PHP Versions</label>
+                                            <select class="form-control" id="stepPhpVersions" v-on:change="yamlGenerate" v-model="stepPhpVersions" multiple>
+                                                <option value="8.0">8.0</option>
+                                                <option value="7.4">7.4</option>
+                                                <option value="7.3">7.3</option>
+                                            </select>
+                                            <div>
+                                                <small class="text-muted">Select PHP Versions (Multiple)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-check">
+                                            <input id="stepNodejs" v-model="stepNodejs" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepNodejs">Install node for NPM build</label>
+                                        </div>
+                                        <div v-if="stepNodejs">
+                                            <label for="onPushBranches" class="form-label"><b>Node Js Version</b></label>
+                                            <input type="text" class="form-control" v-model="stepNodejsVersion" v-on:input="yamlGenerate">
+                                            <small class="text-muted">Define the nodejs Version</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            <div class="row">
+                                <h4 class="mb-3">Laravel stuff</h4>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div>
+                                            <label class="form-check-label" for="stepCachePackages">Env template file</label>
+                                            <input id="stepEnvTemplateFile" v-model="stepEnvTemplateFile" v-on:change="yamlGenerate" type="text" class="form-control">
+                                            <div>
+                                                <small class="text-muted">Define env template file to use in actions</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input id="stepRunMigrations" v-model="stepRunMigrations" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepRunMigrations">Run migrations</label>
+                                            <div>
+                                                <small class="text-muted">Execute php artisan migrate</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input id="stepExecuteCodeSniffer" v-model="stepExecuteCodeSniffer" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepExecuteCodeSniffer">Execute Code Sniffer with phpcs</label>
+                                            <div>
+                                                <small class="text-muted">Execute Code Sniffer with phpcs</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-check">
+                                            <input id="stepFixStoragePermissions" v-model="stepFixStoragePermissions" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepFixStoragePermissions">Fix storage permission</label>
+                                            <div>
+                                                <small class="text-muted">Fix storage permission via chmod 777</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input id="stepExecutePhpunit" v-model="stepExecutePhpunit" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepExecutePhpunit">Execute Tests via phpunit</label>
+                                            <div>
+                                                <small class="text-muted">Execute Tests via phpunit</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-check">
+                                            <input id="stepExecuteStaticAnalysis" v-model="stepExecuteStaticAnalysis" v-on:change="yamlGenerate" type="checkbox" class="form-check-input">
+                                            <label class="form-check-label" for="stepExecuteStaticAnalysis">Execute Static Analysis</label>
+                                            <div>
+                                                <small class="text-muted">Execute Code Static Analysis via phpstan</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            <div class="row">
+                                <textarea class="form-control" id="yaml" v-model="yaml"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Optional JavaScript; choose one of the two! -->
+
+        <!-- Option 1: Bootstrap Bundle with Popper -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+
+        <!-- Option 2: Separate Popper and Bootstrap JS -->
+        <!--
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js" integrity="sha384-q2kxQ16AaE6UbzuKqyBE9/u/KzioAlnx2maXQHiDX9d4/zp8Ok3f+M7DPm+Ib6IU" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.min.js" integrity="sha384-pQQkAEnwaBkjpqZ8RU1fF1AKtTcHJwFl3pblpTlHXybJjHpMYo79HY3hIi4NKxyj" crossorigin="anonymous"></script>
+        -->
+
+        <!-- development version, includes helpful console warnings -->
+        <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+        <script>
+            let app = new Vue({
+                el: '#app',
+                data:{
+                    name: 'Test Laravel Github action',
+                    manualTrigger: false,
+                    onPush: true,
+                    onPushBranches: 'main,develop,features/**',
+                    onPullRequest: false,
+                    onPullRequestBranches: 'main,develop',
+
+                    mysqlService: true,
+                    mysqlDatabase: 'mysql',
+                    mysqlVersion: '5.7',
+                    mysqlDatabaseName: 'db_test_laravel',
+                    mysqlDatabasePort: '33306',
+                    mysqlPasswordType: 'skip',
+                    mysqlPassword: '',
+                    showInputPassword: false,
+
+                    stepCachePackages: true,
+                    stepCacheVendors: true,
+                    stepCacheNpmModules: true,
+
+                    stepPhpVersions: ['8.0', '7.4'],
+                    stepNodejs: false,
+                    stepNodejsVersion:'14.x',
+
+                    stepEnvTemplateFile: '.env.example',
+                    stepRunMigrations: true,
+                    stepExecuteCodeSniffer: false,
+                    stepFixStoragePermissions: true,
+                    stepExecutePhpunit: true,
+                    stepExecuteStaticAnalysis: false,
+
+                    yaml: '',
+                },
+                mounted() {
+                    this.yamlGenerate();
+                },
+                methods: {
+                    yamlGenerate: function () {
+                        this.yaml = 'name: ' + this.name + '\n';
+
+                        this.yaml+= 'on:\n';
+
+                        if (this.manualTrigger) {
+                            this.yaml+= '[ workflow_dispatch ]\n';
+                        } else {
+                            if (this.onPush) {
+                                this.yaml += '  push:\n' +
+                                    '    branches:\n';
+                                this.yaml += this.onPushBranches.split(',').filter((str) => {
+                                    return str.trim().length > 0;
+                                }).map((str) => {
+                                    return '          - ' + str.trim() + '\n';
+                                }).join('');
+                            }
+
+                            if (this.onPullRequest) {
+                                this.yaml += '  pull_request:\n' +
+                                    '    branches:\n';
+                                this.yaml += this.onPullRequestBranches.split(',').filter((str) => {
+                                    return str.trim().length > 0;
+                                }).map((str) => {
+                                    return '          - ' + str.trim() + '\n';
+                                }).join('');
+                            }
+                        }
+
+                        this.yaml+='\njobs:\n' +
+                            '  laravel-tests:\n' +
+                            '    runs-on: ubuntu-latest\n';
+
+                        //mysql
+                        if (this.mysqlService) {
+                            this.yaml+= '    # Service container Mysql ' + this.mysqlDatabase + '\n' +
+                                '    services:\n' +
+                                '      # Label used to access the service container\n' +
+                                '      mysql:\n' +
+                                '        # Docker Hub image (also with version)\n' +
+                                '        image: ' + this.mysqlDatabase + ':' + this.mysqlVersion + '\n' +
+                                '        env:\n';
+                            if (this.mysqlPasswordType === 'skip') {
+                                this.yaml+= '          MYSQL_ALLOW_EMPTY_PASSWORD: yes\n';
+                            } else if (this.mysqlPasswordType === 'secret') {
+                                this.yaml+= '          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}\n';
+                            } else if (this.mysqlPasswordType === 'hardcoded') {
+                                this.yaml+= '          MYSQL_ROOT_PASSWORD: ' + this.mysqlPassword + '\n';
+                            }
+
+                            this.yaml+= '          MYSQL_DATABASE:  ' + this.mysqlDatabaseName + '\n' +
+                                '        ## map the "external" 33306 port with the "internal" 3306\n' +
+                                '        ports:\n' +
+                                '          - ' + this.mysqlDatabasePort +':3306\n' +
+                                '        # Set health checks to wait until mysql database has started (it takes some seconds to start)\n' +
+                                '        options: >-\n' +
+                                '          --health-cmd="mysqladmin ping"\n' +
+                                '          --health-interval=10s\n' +
+                                '          --health-timeout=5s\n' +
+                                '          --health-retries=3\n';
+                        }
+
+                        //php versions
+                        this.yaml+= '\nstrategy:\n' +
+                            '      matrix:\n' +
+                            '        operating-system: [ubuntu-latest]\n' +
+                            '        php-versions: [ '+this.stepPhpVersions.map(function(item) {
+                                                            return `'` + item + `'`;
+                                                        }).join(',')+' ]\n' +
+                            '    steps:\n' +
+                            '    - uses: actions/checkout@v2\n';
+
+                        //nodeJs versions
+                        if (this.stepNodejs) {
+                            this.yaml+='    - name: Setup Node.js\n' +
+                                '      uses: actions/setup-node@v1\n' +
+                                '      with:\n' +
+                                '        node-version: \'' + this.stepNodejsVersion + '\'\n';
+
+                            if (this.stepCacheNpmModules) {
+                                this.yaml+='    - name: Cache Node.js modules\n' +
+                                    '      uses: actions/cache@v2\n' +
+                                    '      with:\n' +
+                                    '        # npm cache files are stored in `~/.npm` on Linux/macOS\n' +
+                                    '        path: ~/.npm\n' +
+                                    '        key: ${{ runner.OS }}-node-${{ hashFiles(\'**/package-lock.json\') }}\n' +
+                                    '        restore-keys: |\n' +
+                                    '          ${{ runner.OS }}-node-\n' +
+                                    '          ${{ runner.OS }}-\n';
+                            }
+
+                            this.yaml+= '- name: Install NPM packages\n' +
+                                '      run: |\n' +
+                                '        npm ci\n' +
+                                '        npm run development\n';
+                        }
+
+                        this.yaml+='    - name: Install PHP versions\n' +
+                            '      uses: shivammathur/setup-php@v2\n' +
+                            '      with:\n' +
+                            '        php-version: ${{ matrix.php-versions }}\n';
+
+                        if (this.stepCachePackages) {
+                            this.yaml+='    - name: Get Composer Cache Directory 2\n' +
+                                '      id: composer-cache\n' +
+                                '      run: |\n' +
+                                '        echo "::set-output name=dir::$(composer config cache-files-dir)"\n' +
+                                '    - uses: actions/cache@v2\n' +
+                                '      id: actions-cache\n' +
+                                '      with:\n' +
+                                '        path: ${{ steps.composer-cache.outputs.dir }}\n' +
+                                '        key: ${{ runner.os }}-composer-${{ hashFiles(\'**/composer.lock\') }}\n' +
+                                '        restore-keys: |\n' +
+                                '          ${{ runner.os }}-composer-\n';
+                        }
+
+                        if (this.stepCacheVendors) {
+                            this.yaml+= '    - name: Cache PHP dependencies\n' +
+                                '      uses: actions/cache@v2\n' +
+                                '      id: vendor-cache\n' +
+                                '      with:\n' +
+                                '        path: vendor\n' +
+                                '        key: ${{ runner.OS }}-build-${{ hashFiles(\'**/composer.lock\') }}\n';
+                        }
+
+                        this.yaml+= '    - name: Copy .env\n' +
+                            '      run: php -r "file_exists(\'.env\') || copy(\'' + this.stepEnvTemplateFile + '\', \'.env\');"\n' +
+                            '    - name: Install Dependencies\n' +
+                            '      if: steps.vendor-cache.outputs.cache-hit != \'true\'\n' +
+                            '      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist\n';
+
+                        if (this.stepNodejs) {
+                            this.yaml+='    - name: Setup Node.js\n' +
+                                '      uses: actions/setup-node@v1\n' +
+                                '      with:\n' +
+                                '        node-version: \'' + this.stepNodejsVersion + '\'\n';
+                        }
+
+                        this.yaml+= '    - name: Generate key\n' +
+                            '      run: php artisan key:generate\n';
+
+                        if (this.stepFixStoragePermissions) {
+                            this.yaml+= '    - name: Directory Permissions\n' +
+                                '      run: chmod -R 777 storage bootstrap/cache\n';
+                        }
+
+                        if (this.stepRunMigrations) {
+                            this.yaml+= '\n    - name: Run Migrations\n' +
+                                this.templateYaml() +
+                                '      run: php artisan migrate\n';
+                        }
+
+                        this.yaml+='    - name: Create Database\n' +
+                            '      run: |\n' +
+                            '        mkdir -p database\n' +
+                            '        touch database/database.sqlite\n';
+
+                        if (this.stepExecutePhpunit) {
+                            this.yaml+='    - name: Execute tests (Unit and Feature tests) via PHPUnit\n' +
+                                this.templateYaml() + '\n' +
+                                '      run: vendor/bin/phpunit --testdox\n\n';
+                        }
+
+                        if (this.stepExecuteCodeSniffer) {
+                            this.yaml+='    - name: Execute Code Sniffer via phpcs\n' +
+                                '      run: |\n' +
+                                '        composer require --dev squizlabs/php_codesniffer\n' +
+                                '        vendor/bin/phpcs --standard=PSR12 app\n';
+                        }
+
+                        if (this.stepExecuteStaticAnalysis) {
+                            this.yaml+='    - name: Execute Code Static Analysis\n' +
+                                '      run: |\n' +
+                                '        composer require --dev phpstan/phpstan\n' +
+                                '        vendor/bin/phpstan analyse --no-progress  app\n';
+                        }
+
+                        this.$nextTick(() => {
+                            let yaml__textarea = document.getElementById('yaml');
+                            yaml__textarea.style.height = '5px';
+                            yaml__textarea.style.height = (yaml__textarea.scrollHeight + 5) + 'px';
+                        });
+                    },
+                    templateYaml: function() {
+                        let result ='# Set environment\n' +
+                            '      env:\n';
+                        if (this.mysqlDatabase) {
+                            result+= '        DB_CONNECTION: '+ this.mysqlDatabase + '\n';
+                        }
+                        if (this.mysqlDatabaseName) {
+                            result+='        DB_DATABASE: ' + this.mysqlDatabaseName + '\n';
+                        }
+
+                        if (this.mysqlDatabasePort) {
+                            result+= '        DB_PORT: ' + this.mysqlDatabasePort + '\n';
+                        }
+
+                        result+= '        DB_USER: root\n';
+
+                        if (this.mysqlPasswordType === 'secret') {
+                            result+= '        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}\n';
+                        }
+                        if (this.mysqlPasswordType === 'hardcoded') {
+                            result+= '        DB_PASSWORD: ' + this.mysqlPassword + '\n';
+                        }
+
+                        return result;
+                    }
+                },
+            });
+        </script>
+    </body>
+</html>
